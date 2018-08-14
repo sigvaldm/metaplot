@@ -87,7 +87,9 @@ def reader(csvfile, **kwargs):
 
 class Series(ureg.Quantity):
     def __new__(cls, value, units=None, dtype=np.float):
-        return super().__new__(cls, np.array(value, dtype=dtype), units=units)
+        new = super().__new__(cls, np.array(value, dtype=dtype), units=units)
+        new.meta = {}
+        return new
 
     def to_compact(self):
         highest = max(abs(self.m))*self.u
@@ -99,10 +101,43 @@ class Series(ureg.Quantity):
         new_unit = highest.to_compact().u
         self.ito(new_unit)
 
+    def __copy__(self):
+        newone = type(self)()
+        newone.__dict__.update(self.__dict__)
+        self.meta = copy(self.meta)
+        return newone
+
+    def __deepcopy__(self, memo):
+        newone = type(self)()
+        newone.__dict__.update(self.__dict__)
+        self.meta = deepcopy(self.meta, memo)
+        return newone
+
+    """
+    OPERATORS
+    """
+
+    def __add__(self, other):
+        ret = super().__add__(other)
+        ret.meta = deepcopy(self.meta)
+        return ret
+"""
+Possible operators to overload:
+__abs__ __add__ __array_prepare__ __array_priority__ __array_wrap__ __bool__
+__bytes__ __class__ __complex__ __copy__ __deepcopy__ __delattr__ __dict__
+__dir__ __div__ __divmod__ __doc__ __eq__ __float__ __floordiv__ __format__
+__ge__ __getattr__ __getattribute__ __getitem__ __gt__ __hash__ __iadd__
+__idiv__ __ifloordiv__ __imod__ __imul__ __init__ __init_subclass__ __int__
+__ipow__ __isub__ __iter__ __itruediv__ __le__ __len__ __long__ __lt__
+__mod__ __module__ __mul__ __ne__ __neg__ __nonzero__ __pos__ __pow__ __radd__
+__rdiv__ __rdivmod__ __reduce__ __reduce_ex__ __repre__ __rfloordiv__ __rmod__
+__rmul__ __round__ __rpow__ __rsub__ __rtruediv__ __setattr__ __setitem__
+__sizeof__ __str__ __sub__ __subclasshook__ __truediv__ __unicode__ __weakref__
+"""
+
 class DataFrame(dict):
 
     def __init__(self, reader):
-        self.meta = {}
         valid_keys = ['NAME', 'MUL', 'LONG', 'UNIT']
 
         raw_data = []
@@ -112,26 +147,54 @@ class DataFrame(dict):
             meta_match = re.match(r'#:(.*)',row[0])
             if meta_match:
                 key = meta_match.group(1)
-                assert key in valid_keys
+                assert key in valid_keys, "Unknown key: {}".format(key)
                 raw_meta[key] = row[1:]
 
             else:
+                # FIXME: This can be optimized by taking a datatype meta and
+                # converting it to that type before storing. Numbers take less
+                # space than strings.
                 raw_data.append(row)
 
         assert 'NAME' in raw_meta, "Missing NAME"
-        assert len(raw_meta['NAME']) == len(set(raw_meta['NAME'])), "Duplicate NAMEs"
-        raw_data = list(map(list, zip(*raw_data))) # Transpose lists
+        assert len(raw_meta['NAME']) == len(set(raw_meta['NAME'])),\
+            "Duplicate NAMEs"
+
+        raw_data = list(map(list, zip(*raw_data))) # Transpose list
 
         for i, name in enumerate(raw_meta['NAME']):
-            mul = self.get_meta('MUL', name, 1.0)
-            self[name] = Series(raw_data[i], dtype=np.float)*mul
-            self[name].meta = {}
+
+            # Making a dataseries
+            self[name] = Series(raw_data[i], dtype=np.float)
+
+            # Putting all the metadata in the series
             for key in raw_meta:
                 self[name].meta[key] = raw_meta[key][i]
 
-            self[name] *= ureg[raw_meta['UNIT'][i]]
+            # meta = {}
+            # for key in raw_meta:
+            #     meta[key] = raw_meta[key][i]
 
+            # units = meta.pop('UNIT','')
+
+            # Making a dataseries
+            # self[name] = Series(raw_data[i], dtype=np.float, units=units)
+            # self.name = name
+
+            # Putting all the metadata in the series
+            # for key in raw_meta:
+            #     self[name].meta[key] = raw_meta[key][i]
+
+        self._apply_meta()
         self._build_indexables()
+
+    def _apply_meta(self):
+
+        for series in self.values():
+            mul  = series.meta.pop('MUL', 1.0)
+            unit = series.meta.pop('UNIT', '')
+            series *= mul
+            series *= ureg[unit]
 
     def _build_indexables(self):
         indexables = {}
@@ -150,106 +213,29 @@ class DataFrame(dict):
             expression = re.sub(key,"self['"+key+"']",expression)
         return eval(expression)
 
-    def get_meta(self, meta_key, data_key, default=None):
-        if meta_key in self.meta:
-            return self.meta[meta_key].get(data_key, default)
-        else:
-            return default
-
-    def plot(self, x, y):
-
-        # Since data may be pre-processed for plotting
-        # it must be deepcopied to avoid permanent changes
-        ydata = deepcopy(self.parse(y))
-        xdata = deepcopy(self.parse(x))
-
-        xlabel = self.get_meta('LONG', x)
-        if xlabel: xlabel = xlabel.capitalize()
-        else: xlabel = x
-
-        ylabel = self.get_meta('LONG', y)
-        if ylabel: ylabel = ylabel.capitalize()
-        else: ylabel = y
-
-        xunit = self.get_meta('UNIT', x, '')
-        if xunit:
-            prefix = si(xdata)
-            xunit = ' [$\\mathrm{' + prefix + xunit + '}$]'
-
-        yunit = self.get_meta('UNIT', y, '')
-        if yunit:
-            prefix = si(ydata)
-            yunit = ' [$\\mathrm{' + prefix + yunit + '}$]'
-
-        plt.plot(xdata, ydata)
-        plt.title(ylabel + ' vs. ' + xlabel)
-        plt.xlabel(xlabel+xunit)
-        plt.ylabel(ylabel+yunit)
-        plt.grid()
-
-# def plot(x, y):
-
-#         print(type(x))
-#         x = deepcopy(x)
-#         y = deepcopy(y)
-#         print(type(x))
-
-#         if 'LONG' in x.meta:
-#             xlabel = x.meta['LONG'].capitalize()
-#         else:
-#             xlabel = x.meta['NAME']
-
-#         if 'LONG' in y.meta:
-#             ylabel = y.meta['LONG'].capitalize()
-#         else:
-#             ylabel = y.meta['NAME']
-
-#         plt.title(ylabel + ' vs. ' + xlabel)
-
-#         if 'UNIT' in x.meta:
-#             x = si(x)
-#             xunit = ' [$\\mathrm{' + x.meta['UNIT'] + '}$]'
-
-#         if 'UNIT' in y.meta:
-#             y = si(y)
-#             yunit = ' [$\\mathrm{' + y.meta['UNIT'] + '}$]'
-
-#         plt.plot(x, y)
-#         plt.xlabel(xlabel+xunit)
-#         plt.ylabel(ylabel+yunit)
-#         plt.grid(True)
-
 def plot(x, y):
 
-        # if 'LONG' in x.meta:
-        #     xlabel = x.meta['LONG'].capitalize()
-        # else:
-        #     xlabel = x.meta['NAME']
+        if 'LONG' in x.meta:
+            xlabel = x.meta['LONG'].capitalize()
+        else:
+            xlabel = x.meta['NAME']
 
-        # if 'LONG' in y.meta:
-        #     ylabel = y.meta['LONG'].capitalize()
-        # else:
-        #     ylabel = y.meta['NAME']
+        if 'LONG' in y.meta:
+            ylabel = y.meta['LONG'].capitalize()
+        else:
+            ylabel = y.meta['NAME']
 
-        # plt.title(ylabel + ' vs. ' + xlabel)
-
-        # if 'UNIT' in x.meta:
-        #     x = si(x)
-        #     xunit = ' [$\\mathrm{' + x.meta['UNIT'] + '}$]'
-
-        # if 'UNIT' in y.meta:
-        #     y = si(y)
-        #     yunit = ' [$\\mathrm{' + y.meta['UNIT'] + '}$]'
+        plt.title(ylabel + ' vs. ' + xlabel)
 
         x = x.to_compact()
         y = y.to_compact()
 
-        xunit = '${:~L}$'.format(x.u)
-        yunit = '${:~L}$'.format(y.u)
+        xunit = ' [${:~L}$]'.format(x.u)
+        yunit = ' [${:~L}$]'.format(y.u)
 
         plt.plot(x, y)
-        plt.xlabel(xunit)
-        plt.ylabel(yunit)
+        plt.xlabel(xlabel+xunit)
+        plt.ylabel(ylabel+yunit)
         plt.grid(True)
 
 if __name__ == '__main__':
@@ -259,8 +245,9 @@ if __name__ == '__main__':
         df = DataFrame(reader)
 
 
+    plot(df['t'], df['I[0]']+df['I[1]'])
     # plot(df['t'], df['I[0]']+df['I[1]']+df['I[2]'])
-    plot(df['t'], df['ne']+df['I[0]'])
+    # plot(df['t'], df['ne']+df['I[0]'])
 
     # df.plot(sum(df.I))
     # metaplot sum(I) pictetra.hst
