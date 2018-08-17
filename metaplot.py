@@ -86,41 +86,94 @@ def reader(csvfile, **kwargs):
             yield row
 
 class Series(ureg.Quantity):
-    def __new__(cls, value, units=None, dtype=np.float):
-        new = super().__new__(cls, np.array(value, dtype=dtype), units=units)
-        new.meta = {}
+
+    """
+    CONSTRUCTOR-LIKE FUNCTIONALITY
+    """
+
+    # NB: Do not re-order or change the first three arguments. Doing so breaks
+    # a lot of compatibility with functionality for parent class.
+    def __new__(cls, value, units=None, **meta):
+
+        # Processing dummy meta-data (which will not be retained)
+        mul   = meta.pop('mul', 1)
+        dtype = meta.pop('dtype', np.float)
+
+        # Would be nice to return name of variable here, but introspection
+        # can not be done (in any good way). Would also be nice to write
+        # what kind of quanitity it is (e.g. Force if the unit is Newton),
+        # but pint do not have this functionality.
+        if not 'name' in meta: meta['name']='?'
+
+        if dtype != None:
+            if isinstance(value, (list, np.ndarray)):
+                value = np.array(value, dtype=dtype)
+            else:
+                value = dtype(value)
+
+        value *= mul
+
+        new = super().__new__(cls, value, units)
+        new.meta = deepcopy(meta)
         return new
 
-    def to_compact(self):
-        highest = max(abs(self.m))*self.u
-        new_unit = highest.to_compact().u
-        return self.to(new_unit)
-
-    def ito_compact(self):
-        highest = max(abs(self.m))*self.u
-        new_unit = highest.to_compact().u
-        self.ito(new_unit)
-
     def __copy__(self):
-        newone = type(self)()
+        newone = type(self)(self.m)
         newone.__dict__.update(self.__dict__)
         self.meta = copy(self.meta)
         return newone
 
     def __deepcopy__(self, memo):
-        newone = type(self)()
+        newone = type(self)(self.m)
         newone.__dict__.update(self.__dict__)
         self.meta = deepcopy(self.meta, memo)
         return newone
 
     """
-    OPERATORS
+    METADATA ACCESSORS
     """
 
+    def axis_label(self):
+        if 'long' in self.meta:
+            label = self.meta['long'].capitalize()
+        elif 'name' in self.meta:
+            label = self.meta['name']
+        else:
+            raise RuntimeError("Missing name")
+
+        label += ' [${:~L}$]'.format(self.u)
+        return label
+
+    """
+    OVERLOADING PINT METHODS
+    """
+
+    # Overload to work on arrays
+    def to_compact(self):
+        new = deepcopy(self)
+        new.ito_compact()
+        return new
+
+    # This one actually do not exist in Pint
+    def ito_compact(self):
+        if isinstance(self.m, np.ndarray):
+            highest = max(abs(self.m))*self.u
+        else:
+            highest = self
+        new_unit = highest.to_compact().u
+        self.ito(new_unit)
+
+    """
+    OVERLOADING OPERATORS
+    """
+
+    # Could add several like these
     def __add__(self, other):
         ret = super().__add__(other)
-        ret.meta = deepcopy(self.meta)
+        # ret.meta = deepcopy(self.meta)
+        ret.meta['name'] = self.meta['name'] + '+' + other.meta['name']
         return ret
+
 """
 Possible operators to overload:
 __abs__ __add__ __array_prepare__ __array_priority__ __array_wrap__ __bool__
@@ -135,10 +188,29 @@ __rmul__ __round__ __rpow__ __rsub__ __rtruediv__ __setattr__ __setitem__
 __sizeof__ __str__ __sub__ __subclasshook__ __truediv__ __unicode__ __weakref__
 """
 
+class ValueDict(dict):
+    """
+    Like a normal dict, but iterates over values instead of keys. Example::
+
+        d  = {3:1, 5:1}
+        vd = ValueDict(d)
+
+        [x for x in d]  # returns [3, 5]
+        [x for x in vd] # returns [1, 1]
+        sum(d)          # returns 8
+        sum(vd)         # returns 2
+
+    Simlarly to how one can iterate over the values of a normal dict using
+    .values(), one can iterate over the keys of a ValueDict using .keys().
+    """
+    def __iter__(self):
+        for value in self.values():
+            yield value
+
 class DataFrame(dict):
 
     def __init__(self, reader):
-        valid_keys = ['NAME', 'MUL', 'LONG', 'UNIT']
+        valid_keys = ['name', 'mul', 'long', 'units']
 
         raw_data = []
         raw_meta = {}
@@ -156,45 +228,22 @@ class DataFrame(dict):
                 # space than strings.
                 raw_data.append(row)
 
-        assert 'NAME' in raw_meta, "Missing NAME"
-        assert len(raw_meta['NAME']) == len(set(raw_meta['NAME'])),\
-            "Duplicate NAMEs"
+        assert 'name' in raw_meta, "Missing name"
+        assert len(raw_meta['name']) == len(set(raw_meta['name'])),\
+            "Duplicate names"
 
         raw_data = list(map(list, zip(*raw_data))) # Transpose list
 
-        for i, name in enumerate(raw_meta['NAME']):
+        for i, name in enumerate(raw_meta['name']):
 
-            # Making a dataseries
-            self[name] = Series(raw_data[i], dtype=np.float)
-
-            # Putting all the metadata in the series
+            meta = {}
             for key in raw_meta:
-                self[name].meta[key] = raw_meta[key][i]
+                meta[key] = raw_meta[key][i]
+            units = meta.pop('units', None)
 
-            # meta = {}
-            # for key in raw_meta:
-            #     meta[key] = raw_meta[key][i]
+            self[name] = Series(raw_data[i], units=units, **meta)
 
-            # units = meta.pop('UNIT','')
-
-            # Making a dataseries
-            # self[name] = Series(raw_data[i], dtype=np.float, units=units)
-            # self.name = name
-
-            # Putting all the metadata in the series
-            # for key in raw_meta:
-            #     self[name].meta[key] = raw_meta[key][i]
-
-        self._apply_meta()
         self._build_indexables()
-
-    def _apply_meta(self):
-
-        for series in self.values():
-            mul  = series.meta.pop('MUL', 1.0)
-            unit = series.meta.pop('UNIT', '')
-            series *= mul
-            series *= ureg[unit]
 
     def _build_indexables(self):
         indexables = {}
@@ -202,7 +251,7 @@ class DataFrame(dict):
             match = re.match('(\w+)\[(\d+)]', key)
             if match:
                 name, index = match.groups()
-                if name not in indexables: indexables[name] = {}
+                if name not in indexables: indexables[name] = ValueDict()
                 indexables[name][int(index)] = self[key]
 
         for key in indexables:
@@ -215,27 +264,14 @@ class DataFrame(dict):
 
 def plot(x, y):
 
-        if 'LONG' in x.meta:
-            xlabel = x.meta['LONG'].capitalize()
-        else:
-            xlabel = x.meta['NAME']
-
-        if 'LONG' in y.meta:
-            ylabel = y.meta['LONG'].capitalize()
-        else:
-            ylabel = y.meta['NAME']
-
-        plt.title(ylabel + ' vs. ' + xlabel)
+        # plt.title(ylabel + ' vs. ' + xlabel)
 
         x = x.to_compact()
         y = y.to_compact()
 
-        xunit = ' [${:~L}$]'.format(x.u)
-        yunit = ' [${:~L}$]'.format(y.u)
-
         plt.plot(x, y)
-        plt.xlabel(xlabel+xunit)
-        plt.ylabel(ylabel+yunit)
+        plt.xlabel(x.axis_label())
+        plt.ylabel(y.axis_label())
         plt.grid(True)
 
 if __name__ == '__main__':
@@ -245,7 +281,9 @@ if __name__ == '__main__':
         df = DataFrame(reader)
 
 
-    plot(df['t'], df['I[0]']+df['I[1]'])
+    # plot(df['t'], df['I[0]'])
+    # plot(df['t'], df['I[0]']+df['I[1]'])
+    plot(df['t'], sum(df['I']))
     # plot(df['t'], df['I[0]']+df['I[1]']+df['I[2]'])
     # plot(df['t'], df['ne']+df['I[0]'])
 
