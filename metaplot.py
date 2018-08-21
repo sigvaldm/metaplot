@@ -26,6 +26,11 @@ TODO:
     fields.
 
     LaTeX-ready font, size, etc. on figures.
+
+    Overload __add__ and other operators such that 'name' is meaningful
+    even when not using the parse function (e.g I[0]+I[1]+I[2])
+
+    Allow plotting an array, e.g. if I is plotted, plot I[0], I[1], etc.
 """
 from numpy import cos, sin
 import numpy as np
@@ -133,17 +138,6 @@ class Series(ureg.Quantity):
     METADATA ACCESSORS
     """
 
-    def axis_label(self):
-        if 'long' in self.meta:
-            label = self.meta['long'].capitalize()
-        elif 'name' in self.meta:
-            label = self.meta['name']
-        else:
-            raise RuntimeError("Missing name")
-
-        label += ' [${:~L}$]'.format(self.u)
-        return label
-
     """
     OVERLOADING PINT METHODS
     """
@@ -210,7 +204,8 @@ class ValueDict(dict):
 class DataFrame(dict):
 
     def __init__(self, reader):
-        valid_keys = ['name', 'mul', 'long', 'units']
+        valid_column_keys = ['name', 'mul', 'long', 'units']
+        valid_frame_keys = ['xaxis']
 
         raw_data = []
         raw_meta = {}
@@ -219,7 +214,8 @@ class DataFrame(dict):
             meta_match = re.match(r'#:(.*)',row[0])
             if meta_match:
                 key = meta_match.group(1)
-                assert key in valid_keys, "Unknown key: {}".format(key)
+                assert key in valid_column_keys or key in valid_frame_keys,\
+                        "Unknown key: {}".format(key)
                 raw_meta[key] = row[1:]
 
             else:
@@ -238,10 +234,18 @@ class DataFrame(dict):
 
             meta = {}
             for key in raw_meta:
-                meta[key] = raw_meta[key][i]
+                if key in valid_column_keys:
+                    meta[key] = raw_meta[key][i]
             units = meta.pop('units', None)
 
             self[name] = Series(raw_data[i], units=units, **meta)
+
+        # Reading in metadata that's not column-wise, but global for the
+        # whole dataframe.
+        self.meta = {}
+        for key in raw_meta:
+            if key in valid_frame_keys:
+                self.meta[key] = raw_meta[key][0]
 
         self._build_indexables()
 
@@ -262,28 +266,116 @@ class DataFrame(dict):
             expression = re.sub(key,"self['"+key+"']",expression)
         return eval(expression)
 
-def plot(x, y):
+    def plot(self, x, y=None):
 
-        # plt.title(ylabel + ' vs. ' + xlabel)
+        if y == None:
+            y = x
+            x = self.meta['xaxis']
+
+        x_series = self.parse(x)
+        y_series = self.parse(y)
+
+        xname = None if x in self else x
+        yname = None if y in self else y
+
+        plot(x_series, y_series, xname=xname, yname=yname)
+
+def format_name(s):
+
+    # Format strings, e.g. I['sc'] and I["sc"] to I_\mathrm{sc}
+    s = re.sub('\[[\'"]([^\]\'"]+)[\'"]\]',r'_\\mathrm{\1}',s)
+
+    # Format numbers, e.g. I[0] to I_{0}
+    s = re.sub('\[([^\]\'"]+)\]',r'_{\1}',s)
+
+    # Wrap the whole thing in math-mode
+    # TBD: Possible improvement, detect what are variable names and
+    # put only those in math mode. Somewhat difficult, since it does
+    # note have access to the registry in the DataFrame.
+    s = '${}$'.format(s)
+
+    return s
+
+def plot(x, y, xname=None, yname=None, xlong=None, ylong=None, title=None):
+
+        # TBD: There's a bug, plotting t against t makes to_compact()
+        # do nothing on y. Doing a deepcopy() before this did not help.
 
         x = x.to_compact()
         y = y.to_compact()
 
+        capitalizable_x = False
+        capitalizable_y = False
+
+        if xlong != None:
+            xlabel = xlong
+            capitalizable_x = True
+        elif xname != None:
+            xlabel = format_name(xname)
+        elif 'long' in x.meta:
+            xlabel = x.meta['long']
+            capitalizable_x = True
+        elif 'name' in x.meta:
+            xlabel = format_name(x.meta['name'])
+        else:
+            xlabel = ''
+
+        if ylong != None:
+            ylabel = ylong
+            capitalizable_y = True
+        elif yname != None:
+            ylabel = format_name(yname)
+        elif 'long' in y.meta:
+            ylabel = y.meta['long']
+            capitalizable_y = True
+        elif 'name' in y.meta:
+            ylabel = format_name(y.meta['name'])
+        else:
+            ylabel = ''
+
+        if title == None:
+            title = ylabel + ' vs. ' + xlabel
+
+        if capitalizable_x:
+            xlabel = capitalize(xlabel)
+
+        if capitalizable_y:
+            ylabel = capitalize(ylabel)
+            title = capitalize(title)
+
+        if x.u != ureg[None]:
+            xlabel += ' [${:~L}$]'.format(x.u)
+
+        if y.u != ureg[None]:
+            ylabel += ' [${:~L}$]'.format(y.u)
+
         plt.plot(x, y)
-        plt.xlabel(x.axis_label())
-        plt.ylabel(y.axis_label())
+        plt.xlabel(xlabel)
+        plt.ylabel(ylabel)
+        plt.title(title)
         plt.grid(True)
+
+def capitalize(s):
+    """
+    Capitalize first letter in a string but leave the rest untouched
+    (unlike the built-in capitalize which lower-cases them).
+    """
+    return "{}{}".format(s[0].upper(), s[1:])
 
 if __name__ == '__main__':
 
-    with open(sys.argv[1]) as csvfile:
+    with open(sys.argv[-1]) as csvfile:
         reader = reader(csvfile, delimiter=' ', has_header=False)
         df = DataFrame(reader)
 
 
     # plot(df['t'], df['I[0]'])
     # plot(df['t'], df['I[0]']+df['I[1]'])
-    plot(df['t'], sum(df['I']))
+    # plot(df['t'], sum(df['I']))
+    df.plot(*sys.argv[1:-1])
+    # df.plot('t', "sum(I)")
+    plt.show()
+    # df.plot('t', "I[0]+I[1]")
     # plot(df['t'], df['I[0]']+df['I[1]']+df['I[2]'])
     # plot(df['t'], df['ne']+df['I[0]'])
 
@@ -291,7 +383,7 @@ if __name__ == '__main__':
     # metaplot sum(I) pictetra.hst
     # metaplot sum(I) V[0] -- pictetra.hst pictetra2.hst
 
-    plt.show()
+    # plt.show()
 
 
 #     # df.plot('t', 'sum(I)')
