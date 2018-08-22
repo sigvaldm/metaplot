@@ -31,6 +31,8 @@ TODO:
     even when not using the parse function (e.g I[0]+I[1]+I[2])
 
     Allow plotting an array, e.g. if I is plotted, plot I[0], I[1], etc.
+
+    Let df.plot() have all the same arguments as plot()
 """
 from numpy import cos, sin
 import numpy as np
@@ -43,6 +45,9 @@ import sys
 from copy import copy, deepcopy
 from sympy.physics import units
 import pint
+import os
+from getopt import getopt
+
 
 ureg = pint.UnitRegistry()
 
@@ -262,11 +267,19 @@ class DataFrame(dict):
             self[key] = indexables[key]
 
     def parse(self, expression):
+        # TBD: sin(I) evaluated to siself (probably siself['n'](I))
+        # Require match of full variable, not just letter
         for key in self:
             expression = re.sub(key,"self['"+key+"']",expression)
         return eval(expression)
 
-    def plot(self, x, y=None):
+    def plot(self, x=None, y=None, label=None):
+
+        if x == None and y == None:
+            raise RuntimeError('Both x and y can not be None')
+
+        if x == None:
+            x = self.meta['xaxis']
 
         if y == None:
             y = x
@@ -278,7 +291,7 @@ class DataFrame(dict):
         xname = None if x in self else x
         yname = None if y in self else y
 
-        plot(x_series, y_series, xname=xname, yname=yname)
+        plot(x_series, y_series, xname=xname, yname=yname, label=label)
 
 def format_name(s):
 
@@ -296,10 +309,19 @@ def format_name(s):
 
     return s
 
-def plot(x, y, xname=None, yname=None, xlong=None, ylong=None, title=None):
+def plot(x, y, xname=None, yname=None, xlong=None, ylong=None, title=None, label=None):
 
         # TBD: There's a bug, plotting t against t makes to_compact()
         # do nothing on y. Doing a deepcopy() before this did not help.
+        # This bug also appear when plotting a ValueDict, e.g. I
+
+        if isinstance(y, ValueDict):
+            for v in y:
+                # TBD: Is the arguments well thought out?
+                label = format_name(v.meta['name'])
+                plot(x, v, xname=xname, xlong=xlong, title=title, label=label)
+                plt.legend(loc='best')
+            return
 
         x = x.to_compact()
         y = y.to_compact()
@@ -349,7 +371,7 @@ def plot(x, y, xname=None, yname=None, xlong=None, ylong=None, title=None):
         if y.u != ureg[None]:
             ylabel += ' [${:~L}$]'.format(y.u)
 
-        plt.plot(x, y)
+        plt.plot(x, y, label=label)
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
         plt.title(title)
@@ -364,37 +386,56 @@ def capitalize(s):
 
 if __name__ == '__main__':
 
-    with open(sys.argv[-1]) as csvfile:
-        reader = reader(csvfile, delimiter=' ', has_header=False)
-        df = DataFrame(reader)
+    #
+    # PARSE OPTIONS
+    #
 
+    # Split argument in files and not
+    files = []
+    args = []
+    for arg in sys.argv[1:]:
+        if os.path.isfile(arg):
+            files.append(arg)
+        else:
+            args.append(arg)
+
+    # Separate out expressions from option args later
+    optlist, expressions = getopt(args, "x:")
+    options = {}
+    for k, v in optlist:
+        options[k] = v
+
+    # Read out variables
+    x = options.pop('-x', None)
+
+    multiple_files = len(files)>1
+    multiple_expressions = len(expressions)>1
+
+    for f in files:
+        with open(f) as csvfile:
+            reader = reader(csvfile, delimiter=' ', has_header=False)
+            df = DataFrame(reader)
+
+        for e in expressions:
+            label = ''
+            if multiple_files:
+                label += f + ': '
+            if multiple_expressions:
+                label += format_name(e)
+            df.plot(x, e, label=label)
+
+    if multiple_files or multiple_expressions:
+        plt.legend(loc='best')
+
+    plt.show()
 
     # plot(df['t'], df['I[0]'])
     # plot(df['t'], df['I[0]']+df['I[1]'])
     # plot(df['t'], sum(df['I']))
-    df.plot(*sys.argv[1:-1])
-    # df.plot('t', "sum(I)")
-    plt.show()
-    # df.plot('t', "I[0]+I[1]")
-    # plot(df['t'], df['I[0]']+df['I[1]']+df['I[2]'])
     # plot(df['t'], df['ne']+df['I[0]'])
+    # df.plot('t', 'I[0]')
+    # df.plot('t', "sum(I)")
+    # df.plot('t', "I[0]+I[1]")
 
-    # df.plot(sum(df.I))
     # metaplot sum(I) pictetra.hst
     # metaplot sum(I) V[0] -- pictetra.hst pictetra2.hst
-
-    # plt.show()
-
-
-#     # df.plot('t', 'sum(I)')
-#     # plot(df['t'],df['I[0]'])
-#     df['I[0]'].meta['UNIT'] = units.A
-#     df['I[1]'].meta['UNIT'] = units.A
-#     Isum = df['I[0]']+df['I[1]']
-#     plot(df['t'],Isum)
-#     # plot(df['t'], df['I[0]'])
-#     plt.show()
-#     # plot(df['t'],df['I[0]'])
-#     # plt.show()
-#     # df.plot('t', 'I[0]')
-#     # plt.show()
