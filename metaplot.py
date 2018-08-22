@@ -128,15 +128,17 @@ class Series(ureg.Quantity):
         return new
 
     def __copy__(self):
-        newone = type(self)(self.m)
-        newone.__dict__.update(self.__dict__)
-        self.meta = copy(self.meta)
+        newone = type(self)(self.m, self.u)
+        # This one overrides magnitude:
+        # newone.__dict__.update(self.__dict__)
+        newone.meta = copy(self.meta)
         return newone
 
     def __deepcopy__(self, memo):
-        newone = type(self)(self.m)
-        newone.__dict__.update(self.__dict__)
-        self.meta = deepcopy(self.meta, memo)
+        newone = type(self)(self.m, self.u)
+        # This one overrides magnitude:
+        # newone.__dict__.update(self.__dict__)
+        newone.meta = deepcopy(self.meta, memo)
         return newone
 
     """
@@ -255,6 +257,8 @@ class DataFrame(dict):
         self._build_indexables()
 
     def _build_indexables(self):
+        # TBD: Delete keys 'I[0]' and so forth
+        # TBD: Fix regex to match words as well as digits
         indexables = {}
         for key in self:
             match = re.match('(\w+)\[(\d+)]', key)
@@ -270,7 +274,14 @@ class DataFrame(dict):
         # TBD: sin(I) evaluated to siself (probably siself['n'](I))
         # Require match of full variable, not just letter
         for key in self:
-            expression = re.sub(key,"self['"+key+"']",expression)
+
+            # Replace the key when it occurs as a separate word.
+            # Example: "n*sin(n)" -> "self['n']*sin(self['n'])"
+            # The 'n' in 'sin' is not replaced.
+            pattern = r"\b{}\b".format(key)
+            replacement = "self['{}']".format(key)
+            expression = re.sub(pattern, replacement, expression)
+
         return eval(expression)
 
     def plot(self, x=None, y=None, label=None):
@@ -305,6 +316,12 @@ def format_name(s):
     # TBD: Possible improvement, detect what are variable names and
     # put only those in math mode. Somewhat difficult, since it does
     # note have access to the registry in the DataFrame.
+    # Perhaps things which is followed by (...) such as sum in sum(I[0])
+    # could be interpreted as an operator and put in mathrm?
+    # The best formatting would probably be acheived by actually using
+    # the dataframe. Perhaps format_name could have an optional dataframe
+    # as input? Or rather list of keys to typeset in math-mode.
+    # This could be used by for instance the CLI parser.
     s = '${}$'.format(s)
 
     return s
@@ -413,8 +430,8 @@ if __name__ == '__main__':
 
     for f in files:
         with open(f) as csvfile:
-            reader = reader(csvfile, delimiter=' ', has_header=False)
-            df = DataFrame(reader)
+            r = reader(csvfile, delimiter=' ', has_header=False)
+            df = DataFrame(r)
 
         for e in expressions:
             label = ''
