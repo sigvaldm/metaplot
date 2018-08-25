@@ -33,6 +33,8 @@ TODO:
     Allow plotting an array, e.g. if I is plotted, plot I[0], I[1], etc.
 
     Let df.plot() have all the same arguments as plot()
+
+    Think of a way to plot only same units on same plot
 """
 from numpy import cos, sin
 import numpy as np
@@ -47,7 +49,6 @@ from sympy.physics import units
 import pint
 import os
 from getopt import getopt
-
 
 ureg = pint.UnitRegistry()
 
@@ -145,9 +146,24 @@ class Series(ureg.Quantity):
     METADATA ACCESSORS
     """
 
+    def apply_filter(self):
+        new = deepcopy(self)
+        if 'filter' in new.meta:
+            if new.meta['filter'] != '-':
+                evalstr = self.meta['filter']+'(new)'
+                new = eval(evalstr)
+        return new
+
     """
     OVERLOADING PINT METHODS
     """
+
+    def to(self, *args, **kwargs):
+        new = ureg.Quantity.to(self, *args, **kwargs)
+        # TBD: Why didn't the below line work?
+        # new = super().to(self, other, *args, **kwargs)
+        new.meta = deepcopy(self.meta)
+        return new
 
     # Overload to work on arrays
     def to_compact(self):
@@ -211,7 +227,7 @@ class ValueDict(dict):
 class DataFrame(dict):
 
     def __init__(self, reader):
-        valid_column_keys = ['name', 'mul', 'long', 'units']
+        valid_column_keys = ['name', 'mul', 'long', 'units', 'filter']
         valid_frame_keys = ['xaxis']
 
         raw_data = []
@@ -326,22 +342,35 @@ def format_name(s):
 
     return s
 
-def plot(x, y, xname=None, yname=None, xlong=None, ylong=None, title=None, label=None):
+def plot(x, y, xname=None, yname=None, xlong=None, ylong=None, title=None, label=None, xunits=None, yunits=None):
 
         # TBD: There's a bug, plotting t against t makes to_compact()
         # do nothing on y. Doing a deepcopy() before this did not help.
         # This bug also appear when plotting a ValueDict, e.g. I
 
         if isinstance(y, ValueDict):
+            if yunits==None:
+                yu = [a.to_compact().u for a in y]
+                yunits = max(yu)
+
             for v in y:
-                # TBD: Is the arguments well thought out?
+                # TBD: Are the arguments well thought out?
                 label = format_name(v.meta['name'])
-                plot(x, v, xname=xname, xlong=xlong, title=title, label=label)
-                plt.legend(loc='best')
+                plot(x, v, xname=xname, xlong=xlong, title=title, label=label, xunits=xunits, yunits=yunits)
+            plt.legend(loc='best')
             return
 
-        x = x.to_compact()
-        y = y.to_compact()
+        y = y.apply_filter()
+
+        if xunits==None:
+            x = x.to_compact()
+        else:
+            x = x.to(xunits)
+
+        if yunits==None:
+            y = y.to_compact()
+        else:
+            y = y.to(yunits)
 
         capitalizable_x = False
         capitalizable_y = False
@@ -394,6 +423,18 @@ def plot(x, y, xname=None, yname=None, xlong=None, ylong=None, title=None, label
         plt.title(title)
         plt.grid(True)
 
+def last(series):
+    print("Last datapoint in series:",series[-1])
+    return series
+
+def ema(dt, tau):
+    weight = 1-np.exp(-dt/tau)
+    def func(series):
+        for i in range(1,len(series)):
+            series[i] = weight*series[i] + (1-weight)*series[i-1]
+        return series
+    return func
+
 def capitalize(s):
     """
     Capitalize first letter in a string but leave the rest untouched
@@ -436,7 +477,9 @@ if __name__ == '__main__':
         for e in expressions:
             label = ''
             if multiple_files:
-                label += f + ': '
+                label += f
+            if multiple_files and multiple_expressions:
+                label += ': '
             if multiple_expressions:
                 label += format_name(e)
             df.plot(x, e, label=label)
