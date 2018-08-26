@@ -39,12 +39,10 @@ TODO:
 from numpy import cos, sin
 import numpy as np
 import matplotlib.pyplot as plt
-import sympy as sp
 import csv
 import re
 import sys
 from copy import copy, deepcopy
-from sympy.physics import units
 import pint
 import os
 from getopt import getopt
