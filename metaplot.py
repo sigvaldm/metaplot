@@ -46,6 +46,7 @@ from copy import copy, deepcopy
 import pint
 import os
 from getopt import getopt
+from functools import reduce
 
 ureg = pint.UnitRegistry()
 
@@ -438,6 +439,11 @@ def capitalize(s):
     (unlike the built-in capitalize which lower-cases them).
     """
     return "{}{}".format(s[0].upper(), s[1:])
+
+def compose(*fs):
+    def compose2(f, g):
+        return lambda *a, **kw: f(g(*a, **kw))
+    return reduce(compose2, fs)
 
 if __name__ == '__main__':
 
