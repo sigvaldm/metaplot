@@ -35,6 +35,13 @@ TODO:
     Let df.plot() have all the same arguments as plot()
 
     Think of a way to plot only same units on same plot
+
+    Consider not wrapping Series values in np.array. It may inconvenience
+    some things.
+
+    Customizable default-properties for Matplotlib (e.g. linewidth and grid or
+    not)
+
 """
 from numpy import cos, sin
 import numpy as np
@@ -114,6 +121,8 @@ class Series(ureg.Quantity):
         # but pint do not have this functionality.
         if not 'name' in meta: meta['name']='?'
 
+        meta['plot_properties'] = {}
+
         if dtype != None:
             if isinstance(value, (list, np.ndarray)):
                 value = np.array(value, dtype=dtype)
@@ -124,6 +133,7 @@ class Series(ureg.Quantity):
 
         new = super().__new__(cls, value, units)
         new.meta = deepcopy(meta)
+        new.coseries = []
         return new
 
     def __copy__(self):
@@ -131,6 +141,7 @@ class Series(ureg.Quantity):
         # This one overrides magnitude:
         # newone.__dict__.update(self.__dict__)
         newone.meta = copy(self.meta)
+        newone.coseries = copy(self.coseries)
         return newone
 
     def __deepcopy__(self, memo):
@@ -138,19 +149,23 @@ class Series(ureg.Quantity):
         # This one overrides magnitude:
         # newone.__dict__.update(self.__dict__)
         newone.meta = deepcopy(self.meta, memo)
+        newone.coseries = deepcopy(self.coseries, memo)
         return newone
 
     """
     METADATA ACCESSORS
     """
 
-    def apply_filter(self):
+    def apply_filter(self, x=None, df=None):
         new = deepcopy(self)
         if 'filter' in new.meta:
             if new.meta['filter'] != '-':
-                evalstr = self.meta['filter']+'(new)'
+                evalstr = new.meta['filter']+'(new, x, df)'
                 new = eval(evalstr)
         return new
+
+    def set_plot_properties(self, **kwargs):
+        self.meta['plot_properties'].update(kwargs)
 
     """
     OVERLOADING PINT METHODS
@@ -358,7 +373,13 @@ def plot(x, y, xname=None, yname=None, xlong=None, ylong=None, title=None, label
             plt.legend(loc='best')
             return
 
-        y = y.apply_filter()
+        y = y.apply_filter(x)
+
+        for cs in y.coseries:
+            # Title, xlabel and ylabel will be overwritten.
+            # Label should not be written here. Possibly in plot
+            # properties by some filter.
+            plot(x, cs)
 
         if xunits==None:
             x = x.to_compact()
@@ -415,22 +436,41 @@ def plot(x, y, xname=None, yname=None, xlong=None, ylong=None, title=None, label
         if y.u != ureg[None]:
             ylabel += ' [${:~L}$]'.format(y.u)
 
-        plt.plot(x, y, label=label)
+        p = plt.plot(x, y, label=label)
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
         plt.title(title)
         plt.grid(True)
 
-def last(series):
+        p[0].set(**y.meta['plot_properties'])
+
+def last(series, x=None, df=None):
+    # TBD: series[-1].to_compact() produces an error
+    # TBD: Find a way to exctract name instead of writing "series"
     print("Last datapoint in series:",series[-1])
     return series
 
-def ema(dt, tau):
-    weight = 1-np.exp(-dt/tau)
-    def func(series):
-        for i in range(1,len(series)):
-            series[i] = weight*series[i] + (1-weight)*series[i-1]
-        return series
+def plain(series, x=None, df=None):
+    series.meta['filter'] = '-'
+    return series
+
+def ema(tau):
+    def func(y, x, df=None):
+
+        raw = plain(deepcopy(y))
+        raw.set_plot_properties(color='#CCCCCC', linewidth=1, zorder=0)
+        y.coseries.append(raw)
+
+        dt = x[1]-x[0]
+        if not isinstance(tau, ureg.Quantity):
+            dt = dt.to_base_units().m
+
+        a = np.exp(-dt/tau)
+        for i in range(1,len(y)):
+            y[i] = (1-a)*y[i] + a*y[i-1]
+
+        return y
+
     return func
 
 def capitalize(s):
@@ -441,9 +481,10 @@ def capitalize(s):
     return "{}{}".format(s[0].upper(), s[1:])
 
 def compose(*fs):
-    def compose2(f, g):
-        return lambda *a, **kw: f(g(*a, **kw))
-    return reduce(compose2, fs)
+    def inner(f, g):
+        return lambda y, x, df: f(g(y, x, df), x, df)
+    return reduce(inner, fs)
+
 
 if __name__ == '__main__':
 

@@ -11,3 +11,9 @@ def test_capitalize():
 def test_ValueDict():
     x = ValueDict({2: 4, 3: 4})
     assert sum(x)==8
+
+def test_compose():
+    def square(x,y,df): return x**2
+    def double(x,y,df): return 2*x
+    def half(x,y,df): return x/2
+    assert compose(double,square,half)(10,0,0)==50
