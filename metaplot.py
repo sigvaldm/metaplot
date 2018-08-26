@@ -39,7 +39,6 @@ TODO:
 from numpy import cos, sin
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
 import sympy as sp
 import csv
 import re
