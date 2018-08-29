@@ -42,6 +42,10 @@ TODO:
     Customizable default-properties for Matplotlib (e.g. linewidth and grid or
     not)
 
+    When plotting multiple quantities in the same plot, e.g. kinetic and potential energy, one may be uJ while the other is mJ. The must be converted to the same prior to plotting.
+
+    When plotting quantity with unit m**(-3) part of the xlabel is cut away.
+
 """
 from numpy import cos, sin
 import numpy as np
@@ -67,6 +71,19 @@ def decomment(file, expression=r'#[^:]'):
         if raw: yield raw
 
 def reader(csvfile, **kwargs):
+
+    sample = [a for a,b in zip(decomment(csvfile,'#'),range(5))]
+    sample = '\n'.join(sample)
+    csvfile.seek(0)
+
+    snf        = csv.Sniffer()
+    dialect    = kwargs.pop('dialect'   , snf.sniff(sample))
+    has_header = kwargs.pop('has_header', snf.has_header(sample))
+
+    for row in csv.reader(decomment(csvfile), dialect, **kwargs):
+        yield row
+
+def oldreader(csvfile, **kwargs):
     """
     metaplot file reader based on Python's csv.reader(). This uses a sniffer to automatically determine the format of the CSV or textfile. This should work most of the times, but occasionally, the format has to be specified manually. In that case, all of the arguments normally accepted by csv.reader() is accepted by
 
@@ -89,14 +106,14 @@ def reader(csvfile, **kwargs):
         # Remove empty columns arising due to multiple delimiters
         row = [x for x in row if x]
 
-        if row[0] == '#:NAME':
+        if row[0] == '#:name':
             name_exists = True
 
         # Annotate header row with #:NAME unless #:NAME already exist
         if has_header and row[0][:2] != '#:':
             has_header = False
             if not name_exists:
-                row.insert(0, '#:NAME')
+                row.insert(0, '#:name')
                 yield row
         else:
             yield row
@@ -431,10 +448,10 @@ def plot(x, y, xname=None, yname=None, xlong=None, ylong=None, title=None, label
             title = capitalize(title)
 
         if x.u != ureg[None]:
-            xlabel += ' [${:~L}$]'.format(x.u)
+            xlabel += r' $\left[{:~L}\right]$'.format(x.u)
 
         if y.u != ureg[None]:
-            ylabel += ' [${:~L}$]'.format(y.u)
+            ylabel += r' $\left[{:~L}\right]$'.format(y.u)
 
         p = plt.plot(x, y, label=label)
         plt.xlabel(xlabel)
@@ -515,7 +532,8 @@ if __name__ == '__main__':
 
     for f in files:
         with open(f) as csvfile:
-            r = reader(csvfile, delimiter=' ', has_header=False)
+            # r = oldreader(csvfile, delimiter=' ', has_header=False)
+            r = reader(csvfile)
             df = DataFrame(r)
 
         for e in expressions:
