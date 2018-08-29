@@ -11,6 +11,6 @@ before_install:
 script:
     - pytest
 after_success:
-    - if [[ $ENV == python=3.7-dev ]]; then
-        coveralls;
+    - if [[ $ENV == python=3.7* ]]; then
+          coveralls;
       fi
