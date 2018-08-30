@@ -1,2 +1,2 @@
 [run]
-omit = deprecated setup.py
+omit = deprecated setup.py test_*
