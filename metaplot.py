@@ -503,8 +503,7 @@ def compose(*fs):
     return reduce(inner, fs)
 
 
-if __name__ == '__main__':
-
+def mpl():
     #
     # PARSE OPTIONS
     #
@@ -561,3 +560,6 @@ if __name__ == '__main__':
 
     # metaplot sum(I) pictetra.hst
     # metaplot sum(I) V[0] -- pictetra.hst pictetra2.hst
+
+if __name__ == '__main__':
+    mpl()

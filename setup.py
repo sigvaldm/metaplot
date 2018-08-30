@@ -31,7 +31,8 @@ setup(name='metaplot',
       author_email='marholm@marebakken.com',
       url='https://github.com/sigvaldm/metaplot.git',
       py_modules=['metaplot'],
-      install_requires=['frmt >1,<2*dev*'],
+      entry_points = {'console_scripts': ['mpl = metaplot:mpl']},
+      install_requires=['numpy', 'matplotlib', 'pint'],
       license='LGPL'
      )
 
