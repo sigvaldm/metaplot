@@ -4,3 +4,4 @@ __pycache__
 metaplot.egg-info
 .pytest_cache
 .coverage
+**.pyc
