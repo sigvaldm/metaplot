@@ -25,7 +25,7 @@ with open('README.rst', encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name='metaplot',
-      version='1.0.0.dev1',
+      version='0.1.0',
       description='metaplot',
       long_description=long_description,
       author='Sigvald Marholm',

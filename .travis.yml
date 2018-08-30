@@ -1,14 +1,21 @@
 language: python
 python:
-    - "2.7"
-    - "3.4"
-    - "3.5"
-    - "3.6"
-    - "3.7-dev"
+- '2.7'
+- '3.4'
+- '3.5'
+- '3.6'
+- '3.7-dev'
 before_install:
-    - pip install pytest pytest-cov
-    - pip install coveralls
+- pip install pytest pytest-cov
+- pip install coveralls
 script:
-    - pytest
+- pytest
 after_success:
-    - coveralls
+- coveralls
+deploy:
+  provider: pypi
+  user: sigvaldm
+  on:
+    tags: true
+  passwd:
+    secure: pxa3BwoyfCICmsc9Fm0h3zg8hunt1fMI6j4wyT1Aa80ki5TgXrM9wBExJxXfSekcVSM/jU7aDR+kHHwN8DCr9puwXASDd1ca1PT8BriX6+lHFUlyDVmYZzXTJ6l3EXF2AL2TBxrDI6Fybs3GBeWaNWeWJDAAd42AA0SQErj2KzknKU/bfVcEsv9ssWF3kP848nad7y8oJOvvqvcz/nzBNWBJoCLl4NN7hHIM4KCl35OwXhajgVr0BAWdGJNyGX9Vhurw/ApPANV8x4gXOlx4WiJqozqnqAP1kt9tThchK27xrS8EgaCu3ZIm6OlFnVp1sx0UBt7syzdRXRaHsn8FxEZrqhkP31DA5FKipp72vMxahrxlZh8UhCyuNBpEayOCh1kT+p6X6qZGswb2eKI9Pl53xNMtEzVZuaskIqIarFF1vlvgAQVNTRp0dY4Mc3e86DpJyP30UVEeRYVXc2Fh4GFhaHaQ1KUiN/sX5721Q2QbZKVsg+ekjYSQ6DO8JxwYZETkN7LtFEHLeE6mXwWu0WldZ96PTSmi6rq+gIZX4OZczkhTYNJB2Ui+nfJn1oZSdO+KlMusJ+kG3OCI2LPjaDZl6vgrlXonw/vz9wh25yjZCFjqlWFS5HAiDCAsX34gemn5bBhWz1YuN3gvvQHyp9fOZVE2RQKjxDA1NZNYHjU=
