@@ -46,6 +46,8 @@ TODO:
 
     When plotting quantity with unit m**(-3) part of the xlabel is cut away.
 
+    Make support for curve-fit
+
 """
 from numpy import cos, sin
 import numpy as np
@@ -131,6 +133,7 @@ class Series(ureg.Quantity):
         # Processing dummy meta-data (which will not be retained)
         mul   = meta.pop('mul', 1)
         dtype = meta.pop('dtype', np.float)
+        xaxis = meta.pop('xaxis', None)
 
         # Would be nice to return name of variable here, but introspection
         # can not be done (in any good way). Would also be nice to write
@@ -151,6 +154,7 @@ class Series(ureg.Quantity):
         new = super().__new__(cls, value, units)
         new.meta = deepcopy(meta)
         new.coseries = []
+        new.xaxis = xaxis
         return new
 
     def __copy__(self):
@@ -159,6 +163,7 @@ class Series(ureg.Quantity):
         # newone.__dict__.update(self.__dict__)
         newone.meta = copy(self.meta)
         newone.coseries = copy(self.coseries)
+        newone.xaxis = copy(self.xaxis)
         return newone
 
     def __deepcopy__(self, memo):
@@ -167,6 +172,7 @@ class Series(ureg.Quantity):
         # newone.__dict__.update(self.__dict__)
         newone.meta = deepcopy(self.meta, memo)
         newone.coseries = deepcopy(self.coseries, memo)
+        newone.xaxis = deepcopy(self.xaxis, memo)
         return newone
 
     """
@@ -177,7 +183,7 @@ class Series(ureg.Quantity):
         new = deepcopy(self)
         if 'filter' in new.meta:
             if new.meta['filter'] != '-':
-                evalstr = new.meta['filter']+'(new, x, df)'
+                evalstr = new.meta['filter']+'(new)'
                 new = eval(evalstr)
         return new
 
@@ -300,6 +306,10 @@ class DataFrame(dict):
             if key in valid_frame_keys:
                 self.meta[key] = raw_meta[key][0]
 
+        for key in self:
+            if key != self.meta['xaxis']:
+                self[key].xaxis = self[self.meta['xaxis']]
+
         self._build_indexables()
 
     def _build_indexables(self):
@@ -322,7 +332,7 @@ class DataFrame(dict):
         for key in self:
 
             # Replace the key when it occurs as a separate word.
-            # Example: "n*sin(n)" -> "self['n']*sin(self['n'])"
+            # Example: "n*sin(n)" -> "self['n']*sin(elf['n'])"
             # The 'n' in 'sin' is not replaced.
             pattern = r"\b{}\b".format(key)
             replacement = "self['{}']".format(key)
@@ -472,7 +482,7 @@ def plot(x, y, xname=None, yname=None, xlong=None, ylong=None, title=None, label
 
         p[0].set(**y.meta['plot_properties'])
 
-def last(series, x=None, df=None):
+def last(series):
     # TBD: series[-1].to_compact() produces an error
     # TBD: Find a way to exctract name instead of writing "series"
     print("Last datapoint in series:",series[-1])
@@ -483,13 +493,15 @@ def plain(series, x=None, df=None):
     return series
 
 def ema(tau):
-    def func(y, x, df=None):
+    def func(y):
 
         raw = plain(deepcopy(y))
         raw.set_plot_properties(color='#CCCCCC', linewidth=1, zorder=0)
         y.coseries.append(raw)
 
-        dt = x[1]-x[0]
+        t = y.xaxis
+
+        dt = t[1]-t[0]
         if not isinstance(tau, ureg.Quantity):
             dt = dt.to_base_units().m
 
@@ -510,7 +522,7 @@ def capitalize(s):
 
 def compose(*fs):
     def inner(f, g):
-        return lambda y, x, df: f(g(y, x, df), x, df)
+        return lambda y: f(g(y))
     return reduce(inner, fs)
 
 
