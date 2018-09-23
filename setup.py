@@ -24,8 +24,11 @@ from io import open # Necessary for Python 2.7
 with open('README.rst', encoding='utf-8') as f:
     long_description = f.read()
 
+with open('.version') as f:
+    version = f.read().strip()
+
 setup(name='metaplot',
-      version='1.0.0.dev1',
+      version=version,
       description='metaplot',
       long_description=long_description,
       author='Sigvald Marholm',
@@ -34,6 +37,12 @@ setup(name='metaplot',
       py_modules=['metaplot'],
       entry_points = {'console_scripts': ['mpl = metaplot:mpl']},
       install_requires=['numpy', 'matplotlib', 'pint'],
-      license='LGPL'
+      license='LGPL',
+      classifiers=[
+        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7'
+        ]
      )
 
