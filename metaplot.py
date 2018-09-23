@@ -453,7 +453,18 @@ def plot(x, y, xname=None, yname=None, xlong=None, ylong=None, title=None, label
         if y.u != ureg[None]:
             ylabel += r' $\left[{:~L}\right]$'.format(y.u)
 
-        p = plt.plot(x, y, label=label)
+        # If color is not set explicitly, filter will be blue,
+        # then set to gray, and subsequently it will be plotted in orange
+        # although blue is not used.
+        # Write a unit test extracting colors when a filter is used
+        # to check that it is correct.
+
+        if 'color' in y.meta['plot_properties']:
+            color = y.meta['plot_properties']['color']
+        else:
+            color = None
+
+        p = plt.plot(x, y, label=label, color=color)
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
         plt.title(title)
@@ -504,6 +515,7 @@ def compose(*fs):
 
 
 def mpl():
+
     #
     # PARSE OPTIONS
     #
