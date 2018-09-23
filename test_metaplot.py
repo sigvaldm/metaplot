@@ -13,10 +13,10 @@ def test_ValueDict():
     assert sum(x)==8
 
 def test_compose():
-    def square(x,y,df): return x**2
-    def double(x,y,df): return 2*x
-    def half(x,y,df): return x/2
-    assert compose(double,square,half)(10,0,0)==50
+    def square(x): return x**2
+    def double(x): return 2*x
+    def half(x): return x/2
+    assert compose(double,square,half)(10)==50
 
 def test_decomment():
     indata = ['# comment', ' # comment', 'data', 'data # comment', '#:name abc']
