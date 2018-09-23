@@ -8,8 +8,6 @@ TODO:
     Some sort of option to include statistical error curves, e.g. min, mean, max.
     Should be based on evaluating expressions like everything else so min and max could be derived using e.g. StDev.
 
-    PREFIX metadata. To apply e.g. SI prefixes. User customizable PREFIX classes?
-
     Arrays/subscripts in symbols. E.g. I[0], I[1] etc, or I_0, I_1, or even I['boom'], I['probe'].
     This should allow evaluation such as sum(I).
 
