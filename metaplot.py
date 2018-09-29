@@ -523,24 +523,25 @@ def compose(*fs):
         return lambda y: f(g(y))
     return reduce(inner, fs)
 
-
-def mpl():
-
+def mpl(*args):
     #
     # PARSE OPTIONS
     #
 
+    if len(args)==0:
+        args = sys.argv[1:]
+
     # Split argument in files and not
     files = []
-    args = []
-    for arg in sys.argv[1:]:
+    expargs = []
+    for arg in args:
         if os.path.isfile(arg):
             files.append(arg)
         else:
-            args.append(arg)
+            expargs.append(arg)
 
-    # Separate out expressions from option args later
-    optlist, expressions = getopt(args, "x:")
+    # Separate out expressions from option expargs later
+    optlist, expressions = getopt(expargs, "x:")
     options = {}
     for k, v in optlist:
         options[k] = v
@@ -582,6 +583,3 @@ def mpl():
 
     # metaplot sum(I) pictetra.hst
     # metaplot sum(I) V[0] -- pictetra.hst pictetra2.hst
-
-if __name__ == '__main__':
-    mpl()

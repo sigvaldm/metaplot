@@ -8,3 +8,13 @@ metaplot
     :target: https://coveralls.io/github/sigvaldm/metaplot?branch=master
 
 Initial version under development.
+
+Examples::
+
+    $ mpl pictetra2.hst ne
+    $ mpl pictetra2.hst ne ni
+    $ mpl ne ni pictetra2.hst
+    $ mpl pictetra2.hst ne+ni
+    $ mpl pictetra2.hst "I[0]"
+    $ mpl pictetra2.hst I
+    $ mpl pictetra2.hst "sum(I)"
