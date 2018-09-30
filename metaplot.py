@@ -65,6 +65,7 @@ import pint
 import os
 from getopt import getopt
 from functools import reduce
+import io
 
 ureg = pint.UnitRegistry()
 
@@ -289,7 +290,23 @@ class ValueDict(dict):
 
 class DataFrame(dict):
 
-    def __init__(self, reader):
+    def __init__(self, arg):
+        if isinstance(arg, str):
+            self._init_from_filename(arg)
+        elif isinstance(arg, io.IOBase):
+            self._init_from_file(arg)
+        else:
+            self._init_from_reader(arg)
+
+    def _init_from_filename(self, filename):
+        with open(filename) as file:
+            self._init_from_file(file)
+
+    def _init_from_file(self, file):
+        reader = csv_reader(file)
+        self._init_from_reader(reader)
+
+    def _init_from_reader(self, reader):
         valid_column_keys = ['name', 'mul', 'long', 'units', 'filter']
         valid_frame_keys = ['xaxis']
 
@@ -587,10 +604,7 @@ def mpl(*args):
     multiple_expressions = len(expressions)>1
 
     for f in files:
-        with open(f) as csvfile:
-            # r = oldreader(csvfile, delimiter=' ', has_header=False)
-            r = csv_reader(csvfile)
-            df = DataFrame(r)
+        df = DataFrame(f)
 
         for e in expressions:
             label = ''
