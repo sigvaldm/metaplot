@@ -35,7 +35,7 @@ setup(name='metaplot',
       author_email='marholm@marebakken.com',
       url='https://github.com/sigvaldm/metaplot.git',
       py_modules=['metaplot'],
-      entry_points = {'console_scripts': ['mpl = metaplot:mpl']},
+      entry_points = {'console_scripts': ['mpl = metaplot.main:mpl']},
       install_requires=['numpy', 'matplotlib', 'pint'],
       license='LGPL',
       classifiers=[
