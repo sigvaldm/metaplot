@@ -46,6 +46,13 @@ TODO:
 
     Make support for curve-fit
 
+    Make parser for reader that removes multiple delimiters?
+    Make parser for reader that auto-inserts name tag on CSV header rows?
+    Make pandas-based parser?
+
+    Make reader for other things than csv-files. E.g. dict_reader()?
+    reader for 2D NumPy array with associated list of column names?
+
 """
 from numpy import cos, sin
 import numpy as np
@@ -61,62 +68,84 @@ from functools import reduce
 
 ureg = pint.UnitRegistry()
 
-def decomment(file, expression=r'#[^:]'):
+class FunctionLine(object):
+    def __init__(self, func):
+        self.func = func
+    def __repr__(self):
+        return "FunctionLine: {}".format(self.func)
+
+class MetadataLine(object):
+    def __init__(self, key, data):
+        self.key = key
+        self.data = data
+    def __repr__(self):
+        return "MetadataLine: {}\n{}".format(self.key, self.data)
+
+class DataLine(object):
+    def __init__(self, data):
+        self.data = data
+    def __repr__(self):
+        return "DataLine: \n{}".format(self.data)
+
+def csv_parser(file, **kwargs):
+
+    sample = [a for a,b in zip(decomment(file,'#'),range(5))]
+    sample = '\n'.join(sample)
+    file.seek(0)
+
+    snf        = csv.Sniffer()
+    dialect    = kwargs.pop('dialect'   , snf.sniff(sample))
+    has_header = kwargs.pop('has_header', snf.has_header(sample))
+
+    return lambda x: list(csv.reader(asSingletonIterable(x), dialect, **kwargs))[0]
+
+def decomment(file, exp=r'#'):
     """
     Generator removing single line comments in iterable ``file``.
-    ``expression`` is the regex for the comment symbol(s).
+    ``exp`` is the regex for the comment symbol(s).
     """
-    for row in file:
-        raw = re.split(expression, row)[0].strip()
+    exp= re.compile(exp)
+    for line in file:
+        raw = exp.split(line)[0].strip()
         if raw: yield raw
 
-def reader(csvfile, **kwargs):
-
-    sample = [a for a,b in zip(decomment(csvfile,'#'),range(5))]
-    sample = '\n'.join(sample)
-    csvfile.seek(0)
-
-    snf        = csv.Sniffer()
-    dialect    = kwargs.pop('dialect'   , snf.sniff(sample))
-    has_header = kwargs.pop('has_header', snf.has_header(sample))
-
-    for row in csv.reader(decomment(csvfile), dialect, **kwargs):
-        yield row
-
-def oldreader(csvfile, **kwargs):
-    """
-    metaplot file reader based on Python's csv.reader(). This uses a sniffer to automatically determine the format of the CSV or textfile. This should work most of the times, but occasionally, the format has to be specified manually. In that case, all of the arguments normally accepted by csv.reader() is accepted by
-
-    Keyword arguments:
-    ------------------
-    has_header
-    """
-
-    sample = [a for a,b in zip(decomment(csvfile,'#'),range(5))]
-    sample = '\n'.join(sample)
-    csvfile.seek(0)
-
-    snf        = csv.Sniffer()
-    dialect    = kwargs.pop('dialect'   , snf.sniff(sample))
-    has_header = kwargs.pop('has_header', snf.has_header(sample))
-
-    name_exists = False
-    for row in csv.reader(decomment(csvfile), dialect, **kwargs):
-
-        # Remove empty columns arising due to multiple delimiters
-        row = [x for x in row if x]
-
-        if row[0] == '#:name':
-            name_exists = True
-
-        # Annotate header row with #:NAME unless #:NAME already exist
-        if has_header and row[0][:2] != '#:':
-            has_header = False
-            if not name_exists:
-                row.insert(0, '#:name')
-                yield row
+class asSingletonIterable(object):
+    def __init__(self, s):
+        self.s = s
+        self.used = False
+    def __next__(self):
+        if self.used:
+            raise StopIteration
         else:
-            yield row
+            self.used = True
+            return self.s
+    def __iter__(self):
+        return self
+
+
+def csv_reader(file, **kwargs):
+
+    parse       = kwargs.pop('parse', csv_parser(file))
+    re_comment  = kwargs.pop('re_comment', r'#[^:>]')
+    re_function = kwargs.pop('re_function', r'#>(.*)')
+    re_metadata = kwargs.pop('re_metadata', r'#:(\S+)\s*(.*)')
+
+    re_function = re.compile(re_function)
+    re_metadata = re.compile(re_metadata)
+
+    for line in decomment(file, re_comment):
+        function_match = re_function.match(line)
+        metadata_match = re_metadata.match(line)
+        if function_match:
+            func = function_match.group(1)
+            yield FunctionLine(func)
+        elif metadata_match:
+            key = metadata_match.group(1)
+            data = parse(metadata_match.group(2))
+            yield MetadataLine(key, data)
+        else:
+            data = parse(line)
+            yield DataLine(data)
 
 class Series(ureg.Quantity):
 
@@ -266,20 +295,25 @@ class DataFrame(dict):
 
         raw_data = []
         raw_meta = {}
-        for row in reader:
+        for line in reader:
 
-            meta_match = re.match(r'#:(.*)',row[0])
-            if meta_match:
-                key = meta_match.group(1)
-                assert key in valid_column_keys or key in valid_frame_keys,\
+            if isinstance(line, MetadataLine):
+                assert line.key in valid_column_keys or line.key in valid_frame_keys,\
                         "Unknown key: {}".format(key)
-                raw_meta[key] = row[1:]
+                raw_meta[line.key] = line.data
 
-            else:
+            elif isinstance(line, FunctionLine):
+                pass
+
+            elif isinstance(line, DataLine):
                 # FIXME: This can be optimized by taking a datatype meta and
                 # converting it to that type before storing. Numbers take less
                 # space than strings.
-                raw_data.append(row)
+                raw_data.append(line.data)
+
+            else:
+                raise RuntimeError("Reader returne line that is neither "
+                                   "DataLine, MetadataLine nor FunctionLine")
 
         assert 'name' in raw_meta, "Missing name"
         assert len(raw_meta['name']) == len(set(raw_meta['name'])),\
@@ -555,7 +589,7 @@ def mpl(*args):
     for f in files:
         with open(f) as csvfile:
             # r = oldreader(csvfile, delimiter=' ', has_header=False)
-            r = reader(csvfile)
+            r = csv_reader(csvfile)
             df = DataFrame(r)
 
         for e in expressions:
