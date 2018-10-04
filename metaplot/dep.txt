@@ -1,0 +1,4 @@
+aux ----,
+api -> core -> cli
+ |      ^
+ +-> plugin
