@@ -227,7 +227,12 @@ class DataFrame(dict):
             replacement = "self['{}']".format(key)
             expression = re.sub(pattern, replacement, expression)
 
-        return eval(expression)
+        series = eval(expression)
+
+        if isinstance(series, (int, float)):
+            series = Series(series*np.ones(self[self.meta['xaxis']].shape))
+
+        return series
 
     def plot(self, x=None, y=None, label=None):
 
