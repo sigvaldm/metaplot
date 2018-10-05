@@ -25,3 +25,4 @@ Examples of use of MetaPlot::
     $ mpl pictetra.hst I
     $ mpl pictetra.hst "sum(I)"
     $ mpl pictetra.hst ne 3.2
+    $ mpl pictetra.hst "ema(1e-6)(I)"
