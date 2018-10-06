@@ -25,10 +25,11 @@ class ValueDict(dict):
 def last(series):
     # TBD: series[-1].to_compact() produces an error
     # TBD: Find a way to exctract name instead of writing "series"
-    print("Last datapoint in series:",series[-1])
+    y = series.to_compact()
+    print("Last datapoint in series:",y[-1])
     return series
 
-def plain(series, x=None, df=None):
+def plain(series):
     series.meta['filter'] = '-'
     return series
 
