@@ -3,6 +3,7 @@ import imp
 import os
 import re
 import csv
+import six
 from os.path import join as joinpath
 """
 Information on plugin API
@@ -22,12 +23,11 @@ class PluginMount(type):
         else:
             cls.plugins.append(cls)
 
-class Reader(object, metaclass=PluginMount):
-    __metaclass__ = PluginMount # Python 2
+class Reader(six.with_metaclass(PluginMount)):
     priority = 1
 
-class Filter(object, metaclass=PluginMount):
-    __metaclass__ = PluginMount # Python 2
+class Filter(six.with_metaclass(PluginMount)):
+    pass
 
 class FunctionLine(object):
     def __init__(self, func):

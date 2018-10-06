@@ -36,7 +36,7 @@ setup(name='metaplot',
       url='https://github.com/sigvaldm/metaplot.git',
       py_modules=['metaplot'],
       entry_points = {'console_scripts': ['mpl = metaplot.cli:mpl']},
-      install_requires=['numpy', 'matplotlib', 'pint'],
+      install_requires=['numpy', 'matplotlib', 'pint', 'six'],
       license='LGPL',
       classifiers=[
         'Programming Language :: Python :: 2.7',
