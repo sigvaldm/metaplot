@@ -1,4 +1,4 @@
 aux ----,
+ ^      |  
+ |      V
 api -> core -> cli
- |      ^
- +-> plugin
