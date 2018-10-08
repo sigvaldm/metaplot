@@ -42,12 +42,15 @@ def ema(tau):
 
         t = y.xaxis
 
-        dt = t[1]-t[0]
-        if not isinstance(tau, ureg.Quantity):
-            dt = dt.to_base_units().m
+        # Re-assignment of non-local variables are impossible in Python 2
+        # (in Python 3 the nonlocal keyword can be used). Make a local
+        # copy of tau.
+        tau_ = tau
+        if not isinstance(tau_, ureg.Quantity):
+            tau_ *= t[0].to_base_units().u
 
-        a = np.exp(-dt/tau)
         for i in range(1,len(y)):
+            a = np.exp(-(t[i]-t[i-1])/tau_)
             y[i] = (1-a)*y[i] + a*y[i-1]
 
         return y
