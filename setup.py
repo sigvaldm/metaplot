@@ -22,6 +22,7 @@ from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
 from io import open # Necessary for Python 2.7
 import sys
+import os
 
 with open('README.rst', encoding='utf-8') as f:
     long_description = f.read()
@@ -112,6 +113,14 @@ class BuildExt(build_ext):
 """
 Normal setup.py
 """
+def package_files(directory):
+    paths = []
+    for (path, directories, filenames) in os.walk(directory):
+        for filename in filenames:
+            paths.append(os.path.join('..', path, filename))
+    return paths
+
+extra_files = package_files('metaplot/plugins')
 
 setup(name='metaplot',
       version=version,
@@ -120,7 +129,8 @@ setup(name='metaplot',
       author='Sigvald Marholm',
       author_email='marholm@marebakken.com',
       url='https://github.com/sigvaldm/metaplot.git',
-      py_modules=['metaplot'],
+      packages=['metaplot'],
+      package_data = {'': extra_files},
       entry_points = {'console_scripts': ['mpl = metaplot.cli:mpl']},
       install_requires=['numpy', 'matplotlib', 'pint', 'six', 'pybind11>=2.2'],
       license='LGPL',

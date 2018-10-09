@@ -1,2 +1,4 @@
 include .version
-include plugins
+include metaplot/*.py
+include metaplot/*.cpp
+include metaplot/plugins

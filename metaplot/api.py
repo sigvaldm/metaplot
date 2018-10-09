@@ -122,7 +122,7 @@ class _PluginManager(object):
     def load_plugins(self):
         if not self.plugins_loaded:
             home = os.path.expanduser("~")
-            inst_dir = joinpath(os.path.dirname(__file__), "..")
+            inst_dir = os.path.dirname(__file__)
             plugin_paths = []
             plugin_paths.append(joinpath(home, ".metaplot", "plugins"))
             plugin_paths.append(joinpath(inst_dir, "plugins"))
