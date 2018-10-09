@@ -2,7 +2,7 @@ import numpy as np
 from copy import deepcopy
 from metaplot.api import ureg
 from functools import reduce
-# from ema import ema
+import metaplot.compiled_filters as compiled_filters
 
 class ValueDict(dict):
     """
@@ -47,12 +47,14 @@ def ema(tau):
         # (in Python 3 the nonlocal keyword can be used). Make a local
         # copy of tau.
         tau_ = tau
+
+        # Make sure tau_ and t has same units before passing to compiled
+        # code which is unaware of units.
         if not isinstance(tau_, ureg.Quantity):
             tau_ *= t[0].to_base_units().u
+            tau_ = tau_.to(t.u)
 
-        for i in range(1,len(y)):
-            a = np.exp(-(t[i]-t[i-1])/tau_)
-            y[i] = (1-a)*y[i] + a*y[i-1]
+        compiled_filters.ema(t.m, y.m, tau_.m)
 
         return y
 

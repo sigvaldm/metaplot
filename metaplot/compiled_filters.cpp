@@ -19,7 +19,7 @@ void ema(py::array_t<double> t, py::array_t<double> x, double tau){
     }
 }
 
-PYBIND11_MODULE(ema, m){
+PYBIND11_MODULE(compiled_filters, m){
     m.doc() = "pybind11 example plugin";
     m.def("ema", &ema, "Exponential Moving Average");
 }
