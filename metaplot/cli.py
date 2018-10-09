@@ -59,7 +59,7 @@ TODO:
 import matplotlib.pyplot as plt
 import sys
 import os
-from getopt import getopt
+from argparse import ArgumentParser
 
 from metaplot.core import DataFrame, format_name
 
@@ -71,23 +71,23 @@ def mpl(*args):
     if len(args)==0:
         args = sys.argv[1:]
 
+    parser = ArgumentParser(description='metaplot (VERSION HERE)')
+    parser.add_argument('files_and_expressions', nargs='*', metavar='file/expression',
+                        help='a file or an expression if no such file exists')
+    parser.add_argument('-x', default=None, metavar='expression',
+                        help='specify expression for x-axis')
+    parser.add_argument('--noshow', action='store_true',
+                        help="don't show plot. Useful for timing")
+    options = parser.parse_args(args)
+
     # Split argument in files and not
     files = []
-    expargs = []
-    for arg in args:
+    expressions = []
+    for arg in options.files_and_expressions:
         if os.path.isfile(arg):
             files.append(arg)
         else:
-            expargs.append(arg)
-
-    # Separate out expressions from option expargs later
-    optlist, expressions = getopt(expargs, "x:")
-    options = {}
-    for k, v in optlist:
-        options[k] = v
-
-    # Read out variables
-    x = options.pop('-x', None)
+            expressions.append(arg)
 
     multiple_files = len(files)>1
     multiple_expressions = len(expressions)>1
@@ -103,12 +103,13 @@ def mpl(*args):
                 label += ': '
             if multiple_expressions:
                 label += format_name(e)
-            df.plot(x, e, label=label)
+            df.plot(options.x, e, label=label)
 
     if multiple_files or multiple_expressions:
         plt.legend(loc='best')
 
-    plt.show()
+    if not options.noshow:
+        plt.show()
 
     # plot(df['t'], df['I[0]'])
     # plot(df['t'], df['I[0]']+df['I[1]'])
