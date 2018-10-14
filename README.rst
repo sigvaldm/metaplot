@@ -41,9 +41,9 @@ To apply exponential moving average (EMA) filter of 1 microsecond relaxation tim
 
     $ mpl pictetra.hst "ema(1e-6)(I)"
 
-Whereas `last` don't take any hyperparameters, `ema` takes the relaxation time as a hyperparameter. After hyperparameters are applied, filters have _only_ the dataseries as a parameter.
+Whereas ``last`` don't take any hyperparameters, ``ema`` takes the relaxation time as a hyperparameter. After hyperparameters are applied, filters have _only_ the dataseries as a parameter.
 
-`truth` is useful to compare a curve to a ground truth. E.g if `I` should be -8.74 microamperes::
+``truth`` is useful to compare a curve to a ground truth. E.g if ``I`` should be -8.74 microamperes::
 
     $ mpl pictetra.hst "truth(-8.74e-6)(I)"
 
@@ -54,9 +54,11 @@ To allow for a tolerance of 1% or 1e-7, respectively::
 
 Filters can also be composed, using one of either two methods::
 
-    $ mpl pictetra.hst "compose(last, truth(-8.74, 0.01), ema(1e-6))(I)"
-    $ mpl pictetra.hst "last(truth(-8.74, 0.01)(ema(1e-6)(I)))"
+    $ mpl pictetra.hst "last(truth(-8.74e-6, 0.01)(ema(1e-6)(I)))"
+    $ mpl pictetra.hst "compose(last, truth(-8.74e-6, 0.01), ema(1e-6))(I)"
 
-Filters can also be applied under the `filter` metadata in the files. Then you must omit the latter parenthesis `(I)`. For composition you will then have to use the `compose` function. To turn off filters applied in file from the command line interface, use::
+Filters can also be applied under the ``filter`` metadata in the files. Then you must omit the latter parenthesis ``(I)``. For composition you will then have to use the last method. To override filters applied in file from the command line interface, you turn it off using the ``plain`` filter::
 
     $ mpl pictetra.hst "plain(I)"
+
+If applying filters in file from Metaplot header, specify no filter using `-` for columns without filter.
