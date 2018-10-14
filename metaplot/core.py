@@ -37,7 +37,7 @@ class Series(ureg.Quantity):
 
         value *= mul
 
-        new = super().__new__(cls, value, units)
+        new = super(Series, cls).__new__(cls, value, units)
         new.meta = deepcopy(meta)
         new.coseries = []
         new.xaxis = xaxis
@@ -83,7 +83,7 @@ class Series(ureg.Quantity):
     def to(self, *args, **kwargs):
         new = ureg.Quantity.to(self, *args, **kwargs)
         # TBD: Why didn't the below line work?
-        # new = super().to(self, other, *args, **kwargs)
+        # new = super(Series, self).to(self, other, *args, **kwargs)
         new.meta = deepcopy(self.meta)
         return new
 
@@ -108,7 +108,7 @@ class Series(ureg.Quantity):
 
     # Could add several like these
     def __add__(self, other):
-        ret = super().__add__(other)
+        ret = super(Series, self).__add__(other)
         # ret.meta = deepcopy(self.meta)
         ret.meta['name'] = self.meta['name'] + '+' + other.meta['name']
         return ret
