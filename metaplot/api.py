@@ -33,20 +33,20 @@ class FunctionLine(object):
     def __init__(self, func):
         self.func = func
     def __repr__(self):
-        return "FunctionLine: {}".format(self.func)
+        return "FunctionLine({})".format(self.func)
 
 class MetadataLine(object):
     def __init__(self, key, data):
         self.key = key
         self.data = data
     def __repr__(self):
-        return "MetadataLine: {}\n{}".format(self.key, self.data)
+        return "MetadataLine({}, {})".format(self.key, self.data)
 
 class DataLine(object):
     def __init__(self, data):
         self.data = data
     def __repr__(self):
-        return "DataLine: \n{}".format(self.data)
+        return "DataLine({})".format(self.data)
 
 def decomment(file, exp=r'#'):
     """
