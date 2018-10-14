@@ -3,7 +3,7 @@ import pint
 import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
-from metaplot.aux import ValueDict, capitalize, ema, last, compose
+from metaplot.aux import ValueDict, capitalize, ema, last, compose, plain, truth
 from metaplot.api import FunctionLine, MetadataLine, DataLine, csv_reader, ureg, plugin_manager
 
 class Series(ureg.Quantity):

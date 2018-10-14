@@ -44,5 +44,7 @@ def test_ema():
     output = ema(tau)(input)
     true_output = np.exp(-ind*dt/tau)
 
+    # TBD: Should also check co-data
+
     assert np.allclose(output, true_output)
     # assert not np.allclose(input, output)

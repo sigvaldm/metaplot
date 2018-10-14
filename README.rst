@@ -26,3 +26,8 @@ Examples of use of MetaPlot::
     $ mpl pictetra.hst "sum(I)"
     $ mpl pictetra.hst ne 3.2
     $ mpl pictetra.hst "ema(1e-6)(I)"
+    $ mpl pictetra.hst "truth(-8.74)(I)"
+    $ mpl pictetra.hst "truth(-8.74, 0.01)(I)"
+    $ mpl pictetra.hst "truth(-8.74, tol=0.1)(I)"
+    $ mpl pictetra.hst "last(I)"
+    $ mpl pictetra.hst "compose(last, truth(-8.74, 0.01), ema(1e-6))(I)"

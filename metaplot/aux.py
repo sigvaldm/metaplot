@@ -61,6 +61,26 @@ def ema(tau):
 
     return func
 
+def truth(value, reltol=0, tol=0):
+    if reltol != 0:
+        tol = value*reltol
+
+    def func(y):
+
+        upper = plain(deepcopy(y))
+        upper.m[:] = value+tol
+        upper.set_plot_properties(color='#333333', linewidth=1, linestyle='--')
+        y.coseries.append(upper)
+
+        if tol != 0:
+            lower = deepcopy(upper)
+            upper.m[:] = value-tol
+            y.coseries.append(lower)
+
+        return y
+
+    return func
+
 def capitalize(s):
     """
     Capitalize first letter in a string but leave the rest untouched
