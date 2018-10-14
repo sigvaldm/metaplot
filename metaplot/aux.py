@@ -68,6 +68,7 @@ def truth(value, reltol=0, tol=0):
     def func(y):
 
         upper = plain(deepcopy(y))
+        upper.ito_base_units()
         upper.m[:] = value+tol
         upper.set_plot_properties(color='#333333', linewidth=1, linestyle='--')
         y.coseries.append(upper)

@@ -276,6 +276,30 @@ def format_name(s):
 
     return s
 
+def equalize_axis_units(ax, xunits=None, yunits=None):
+    """
+    Sets the units on the axes of all plots (Line2D) in pyplot. If None it will
+    be scaled to fit all plots.
+    """
+
+    # It's important to let these run even when xunits and yunits is not None
+    # because it will raise an error when trying to plot quantities with
+    # different dimensionality against each other.
+    xmax = max([l.get_data()[0].to_compact().u for l in ax.lines])
+    ymax = max([l.get_data()[1].to_compact().u for l in ax.lines])
+
+    if xunits == None: xunits = xmax
+    if yunits == None: yunits = ymax
+
+    for line in ax.lines:
+        x, y = line.get_data()
+        x.ito(xunits)
+        y.ito(yunits)
+        line.set_data(x, y)
+
+    ax.relim()
+    ax.autoscale_view()
+
 def plot(x, y, xname=None, yname=None, xlong=None, ylong=None, title=None, label=None, xunits=None, yunits=None):
 
         # TBD: There's a bug, plotting t against t makes to_compact()
@@ -283,9 +307,6 @@ def plot(x, y, xname=None, yname=None, xlong=None, ylong=None, title=None, label
         # This bug also appear when plotting a ValueDict, e.g. I
 
         if isinstance(y, ValueDict):
-            if yunits==None:
-                yu = [a.to_compact().u for a in y]
-                yunits = max(yu)
 
             for v in y:
                 # TBD: Are the arguments well thought out?
@@ -302,15 +323,19 @@ def plot(x, y, xname=None, yname=None, xlong=None, ylong=None, title=None, label
             # properties by some filter.
             plot(x, cs)
 
-        if xunits==None:
-            x = x.to_compact()
-        else:
-            x = x.to(xunits)
+        # If color is not set explicitly, filter will be blue,
+        # then set to gray, and subsequently it will be plotted in orange
+        # although blue is not used.
+        # Write a unit test extracting colors when a filter is used
+        # to check that it is correct.
 
-        if yunits==None:
-            y = y.to_compact()
+        if 'color' in y.meta['plot_properties']:
+            color = y.meta['plot_properties']['color']
         else:
-            y = y.to(yunits)
+            color = None
+
+        p = plt.plot(x, y, label=label, color=color)
+        p[0].set(**y.meta['plot_properties'])
 
         capitalizable_x = False
         capitalizable_y = False
@@ -351,27 +376,18 @@ def plot(x, y, xname=None, yname=None, xlong=None, ylong=None, title=None, label
             ylabel = capitalize(ylabel)
             title = capitalize(title)
 
-        if x.u != ureg[None]:
-            xlabel += r' $\left[{:~L}\right]$'.format(x.u)
+        ax = plt.gca()
+        equalize_axis_units(ax, xunits, yunits)
 
-        if y.u != ureg[None]:
-            ylabel += r' $\left[{:~L}\right]$'.format(y.u)
+        scaled_x, scaled_y = p[0].get_data()
 
-        # If color is not set explicitly, filter will be blue,
-        # then set to gray, and subsequently it will be plotted in orange
-        # although blue is not used.
-        # Write a unit test extracting colors when a filter is used
-        # to check that it is correct.
+        if scaled_x.u != ureg[None]:
+            xlabel += r' $\left[{:~L}\right]$'.format(scaled_x.u)
 
-        if 'color' in y.meta['plot_properties']:
-            color = y.meta['plot_properties']['color']
-        else:
-            color = None
+        if scaled_y.u != ureg[None]:
+            ylabel += r' $\left[{:~L}\right]$'.format(scaled_y.u)
 
-        p = plt.plot(x, y, label=label, color=color)
         plt.xlabel(xlabel)
         plt.ylabel(ylabel)
         plt.title(title)
         plt.grid(True)
-
-        p[0].set(**y.meta['plot_properties'])
