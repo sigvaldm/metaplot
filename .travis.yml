@@ -8,6 +8,7 @@ before_install:
 - pip install pytest pytest-cov
 - pip install coveralls
 - export CXX=g++-4.8 CC=gcc-4.8
+- $CXX --version
 script:
 - pytest
 after_success:
