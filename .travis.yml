@@ -17,9 +17,7 @@ matrix:
 # - 3.6
 # - 3.7-dev
 before_install:
-- pip install --user --upgrade pip virtualenv
-- virtualenv -p python$PYTHON venv
-- source venv/bin/activate
+- pip install --upgrade pip 
 - pip install pytest pytest-cov
 - pip install coveralls
 install:
