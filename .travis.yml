@@ -1,14 +1,32 @@
-language: python
-python:
-- 2.7
-- 3.5
-- 3.6
-- 3.7-dev
+language: cpp
+dist: trusty
+matrix:
+  include:
+  - os: linux
+    env: PYTHON=2.7
+  - os: linux
+    env: PYTHON=3.5
+  - os: linux
+    env: PYTHON=3.6
+  - os: linux
+    env: PYTHON=3.7-dev
+# language: python
+# python:
+# - 2.7
+# - 3.5
+# - 3.6
+# - 3.7-dev
 before_install:
 - pip install pytest pytest-cov
 - pip install coveralls
 - export CXX=g++-4.8 CC=gcc-4.8
 - $CXX --version
+- pip install --user --upgrade pip virtualenv
+- virtualenv -p python$PYTHON venv
+- source venv/bin/activate
+install:
+- python setup.py sdist
+- pip install --verbose dist/*.tar.gz
 script:
 - pytest
 after_success:
