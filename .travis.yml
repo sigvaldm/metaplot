@@ -7,9 +7,10 @@ python:
 before_install:
 - pip install pytest pytest-cov
 - pip install coveralls
+- pip install pybind11
 install:
-- sudo apt-get install -qq gcc-4.8 g++-4.8
-- export CC=gcc-4.8 CXX=g++-4.8
+# - sudo apt-get install -qq gcc-4.8 g++-4.8
+# - export CC=gcc-4.8 CXX=g++-4.8
 - pip install .
 script:
 - pytest
