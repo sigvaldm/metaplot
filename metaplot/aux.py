@@ -25,6 +25,9 @@ class ValueDict(dict):
             yield value
 
 def last(series):
+    """
+    Print the last value in series to terminal.
+    """
     # TBD: series[-1].to_compact() produces an error
     # TBD: Find a way to exctract name instead of writing "series"
     y = series.to_compact()
@@ -32,6 +35,9 @@ def last(series):
     return series
 
 def plain(series):
+    """
+    Removes any filters from series.
+    """
     series.meta['filter'] = '-'
     return series
 

@@ -7,6 +7,10 @@ Metaplot
 .. image:: https://coveralls.io/repos/github/sigvaldm/metaplot/badge.svg?branch=master
     :target: https://coveralls.io/github/sigvaldm/metaplot?branch=master
 
+.. image:: https://readthedocs.org/projects/metaplot/badge/?version=latest
+    :target: https://metaplot.readthedocs.io/en/latest/?badge=latest
+    :alt: Documentation Status
+
 MetaPlot is in a very early development phase. To install and run development version::
 
     git clone https://github.com/sigvaldm/metaplot.git
