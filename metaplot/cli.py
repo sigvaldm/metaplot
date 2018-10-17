@@ -79,6 +79,12 @@ def mpl(*args):
                         help='specify expression for x-axis')
     parser.add_argument('--noshow', action='store_true',
                         help="don't show plot. Useful for timing")
+    parser.add_argument('--xlabel',
+                        help="x axis label")
+    parser.add_argument('--ylabel',
+                        help="y axis label")
+    parser.add_argument('--title',
+                        help="figure title")
     options = parser.parse_args(args)
 
     # Split argument in files and not
@@ -108,6 +114,15 @@ def mpl(*args):
 
     if multiple_files or multiple_expressions:
         plt.legend(loc='best')
+
+    if options.xlabel:
+        plt.xlabel(options.xlabel)
+
+    if options.ylabel:
+        plt.ylabel(options.ylabel)
+
+    if options.title:
+        plt.title(options.title)
 
     if not options.noshow:
         plt.show()
