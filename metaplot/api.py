@@ -15,6 +15,7 @@ https://stackoverflow.com/questions/100003/what-are-metaclasses-in-python#658194
 """
 
 ureg = pint.UnitRegistry()
+ureg.define('auto = [auto]')
 
 class PluginMount(type):
     def __init__(cls, name, bases, attrs):

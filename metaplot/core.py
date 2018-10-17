@@ -3,7 +3,7 @@ import pint
 import numpy as np
 import matplotlib.pyplot as plt
 from copy import deepcopy
-from metaplot.aux import ValueDict, capitalize, ema, last, compose, plain, truth
+from metaplot.aux import ValueDict, capitalize, ema, last, compose, plain, truth, infer_auto_quantities
 from metaplot.api import FunctionLine, MetadataLine, DataLine, csv_reader, ureg, plugin_manager
 
 class Series(ureg.Quantity):
@@ -230,7 +230,7 @@ class DataFrame(dict):
         series = eval(expression)
 
         if isinstance(series, (int, float)):
-            series = Series(series*np.ones(self[self.meta['xaxis']].shape))
+            series = Series(series*np.ones(self[self.meta['xaxis']].shape), 'auto')
 
         return series
 
@@ -282,11 +282,14 @@ def equalize_axis_units(ax, xunits=None, yunits=None):
     be scaled to fit all plots.
     """
 
-    # It's important to let these run even when xunits and yunits is not None
-    # because it will raise an error when trying to plot quantities with
-    # different dimensionality against each other.
-    xmax = max([l.get_data()[0].to_compact().u for l in ax.lines])
-    ymax = max([l.get_data()[1].to_compact().u for l in ax.lines])
+    xs = [l.get_data()[0] for l in ax.lines]
+    ys = [l.get_data()[1] for l in ax.lines]
+
+    xs = infer_auto_quantities(*xs)
+    ys = infer_auto_quantities(*ys)
+
+    xmax = max([x.to_compact().u for x in xs])
+    ymax = max([y.to_compact().u for y in ys])
 
     if xunits == None: xunits = xmax
     if yunits == None: yunits = ymax

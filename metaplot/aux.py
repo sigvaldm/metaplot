@@ -41,6 +41,29 @@ def plain(series):
     series.meta['filter'] = '-'
     return series
 
+def infer_auto_quantities(*quantities):
+    # This shoul perhaps be implemented in overloaded operators
+
+    quantities = list(quantities)
+
+    others = list(filter(lambda x: x.to_base_units().u != 'auto', quantities))
+
+    if len(others)==0:
+        # All quantities are auto. Keep them as they are.
+        return quantities
+
+    units = others[0].to_base_units().u
+
+    dims = [o.dimensionality for o in others]
+    if not all([d==units.dimensionality for d in dims]):
+        raise ValueError("Mixed dimensionalities when inferring auto units")
+
+    for i in range(len(quantities)):
+        if quantities[i].to_base_units().u == 'auto':
+            quantities[i] *= units/quantities[i].to_base_units().u
+
+    return quantities
+
 def ema(tau):
     def func(y):
 

@@ -62,6 +62,7 @@ import os
 from argparse import ArgumentParser
 
 from metaplot.core import DataFrame, format_name
+from metaplot.api import ureg
 
 def mpl(*args):
     #
