@@ -79,12 +79,16 @@ def mpl(*args):
                         help='specify expression for x-axis')
     parser.add_argument('--noshow', action='store_true',
                         help="don't show plot. Useful for timing")
-    parser.add_argument('--xlabel',
+    parser.add_argument('--xlabel', metavar='label',
                         help="x axis label")
-    parser.add_argument('--ylabel',
+    parser.add_argument('--ylabel', metavar='label',
                         help="y axis label")
-    parser.add_argument('--title',
+    parser.add_argument('--title', metavar='label',
                         help="figure title")
+    parser.add_argument('--save', metavar='file',
+                        help="save to file")
+    parser.add_argument('--dpi', metavar='dpi',
+                        help="dots per inch used when using --save")
     options = parser.parse_args(args)
 
     # Split argument in files and not
@@ -123,6 +127,9 @@ def mpl(*args):
 
     if options.title:
         plt.title(options.title)
+
+    if options.save:
+        plt.savefig(options.save, bbox_inches='tight', dpi=float(options.dpi))
 
     if not options.noshow:
         plt.show()
