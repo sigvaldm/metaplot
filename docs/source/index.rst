@@ -10,11 +10,14 @@ Metaplot's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   installation
-   usage
-   filters
-   plugins
-   reference
+    installation
+    usage
+    filters
+    plugins
+    reference
+
+Indices and tables
+==================
 
 * :ref:`genindex`
 * :ref:`modindex`

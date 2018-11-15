@@ -57,12 +57,15 @@ TODO:
 
 """
 import matplotlib.pyplot as plt
+import matplotlib
 import sys
 import os
 from argparse import ArgumentParser
 
 from metaplot.core import DataFrame, format_name
 from metaplot.api import ureg
+
+matplotlib.rcParams['agg.path.chunksize'] = 10000
 
 def mpl(*args):
     #
