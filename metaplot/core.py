@@ -176,7 +176,8 @@ class DataFrame(dict):
         assert len(raw_meta['name']) == len(set(raw_meta['name'])),\
             "Duplicate names"
 
-        raw_data = list(map(list, zip(*raw_data))) # Transpose list
+        raw_data = np.array(raw_data, dtype=np.float).T
+        #raw_data = list(map(list, zip(*raw_data))) # Transpose list
 
         for i, name in enumerate(raw_meta['name']):
 
@@ -234,7 +235,7 @@ class DataFrame(dict):
 
         return series
 
-    def plot(self, x=None, y=None, label=None):
+    def plot(self, x=None, y=None, label=None, max_samples=1000):
 
         if x == None and y == None:
             raise RuntimeError('Both x and y can not be None')
@@ -252,7 +253,7 @@ class DataFrame(dict):
         xname = None if x in self else x
         yname = None if y in self else y
 
-        plot(x_series, y_series, xname=xname, yname=yname, label=label)
+        plot(x_series, y_series, xname=xname, yname=yname, label=label, max_samples=max_samples)
 
 def format_name(s):
 
@@ -303,7 +304,18 @@ def equalize_axis_units(ax, xunits=None, yunits=None):
     ax.relim()
     ax.autoscale_view()
 
-def plot(x, y, xname=None, yname=None, xlong=None, ylong=None, title=None, label=None, xunits=None, yunits=None):
+def downsample(x,  max_samples):
+
+    if max_samples==0 or len(x)<max_samples:
+        return x
+
+    else:
+        ratio = int(np.ceil(len(x)/max_samples))
+        trim = int(np.floor(len(x)/ratio)*ratio)
+        x._magnitude = np.average(x.m[:trim].reshape(-1, ratio), 1)
+        return x
+
+def plot(x, y, xname=None, yname=None, xlong=None, ylong=None, title=None, label=None, xunits=None, yunits=None, max_samples=1000):
 
         # TBD: There's a bug, plotting t against t makes to_compact()
         # do nothing on y. Doing a deepcopy() before this did not help.
@@ -314,9 +326,12 @@ def plot(x, y, xname=None, yname=None, xlong=None, ylong=None, title=None, label
             for v in y:
                 # TBD: Are the arguments well thought out?
                 label = format_name(v.meta['name'])
-                plot(x, v, xname=xname, xlong=xlong, title=title, label=label, xunits=xunits, yunits=yunits)
+                plot(x, v, xname=xname, xlong=xlong, title=title, label=label, xunits=xunits, yunits=yunits, max_samples=max_samples)
             plt.legend(loc='best')
             return
+
+        x = downsample(x, max_samples)
+        y = downsample(y, max_samples)
 
         y = y.apply_filter(x)
 
@@ -324,7 +339,7 @@ def plot(x, y, xname=None, yname=None, xlong=None, ylong=None, title=None, label
             # Title, xlabel and ylabel will be overwritten.
             # Label should not be written here. Possibly in plot
             # properties by some filter.
-            plot(x, cs)
+            plot(x, cs, max_samples=max_samples)
 
         # If color is not set explicitly, filter will be blue,
         # then set to gray, and subsequently it will be plotted in orange

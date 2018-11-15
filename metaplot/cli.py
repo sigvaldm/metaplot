@@ -92,6 +92,8 @@ def mpl(*args):
                         help="save to file")
     parser.add_argument('--dpi', metavar='dpi',
                         help="dots per inch used when using --save")
+    parser.add_argument('--max_samples', metavar='max_samples',
+                        help="Average to get maximum this number of samples before plotting. No downsampling: None")
     options = parser.parse_args(args)
 
     # Split argument in files and not
@@ -106,6 +108,11 @@ def mpl(*args):
     multiple_files = len(files)>1
     multiple_expressions = len(expressions)>1
 
+    if options.max_samples:
+        max_samples = int(options.max_samples)
+    else:
+        max_samples = 1000
+
     for f in files:
         df = DataFrame(f)
 
@@ -117,7 +124,7 @@ def mpl(*args):
                 label += ': '
             if multiple_expressions:
                 label += format_name(e)
-            df.plot(options.x, e, label=label)
+            df.plot(options.x, e, label=label, max_samples=max_samples)
 
     if multiple_files or multiple_expressions:
         plt.legend(loc='best')
