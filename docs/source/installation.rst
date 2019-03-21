@@ -1,14 +1,14 @@
 Installation
 ------------
 
-To install Metaplot from PyPI::
+To install the latest stable version of Metaplot from PyPI::
 
-    pip install metaplot
+    $ pip install metaplot
 
-Since Metaplot is in a very early development phase, you may want to install it in directly from a GitHub clone, such that when new bugfixes appear, you can pull them from GitHub with immediate effect. If that's the case you should rather install Metaplot like this::
+However, Metaplot is in a very experimental trial-and-error stage. It may be necessary to run the latest *development* version, i.e., the latest Git commit,  despite any stability issues. To install the latest development version::
 
-    git clone https://github.com/sigvaldm/metaplot.git
-    cd metaplot
-    pip install -e .
+    $ git clone https://github.com/sigvaldm/metaplot.git
+    $ cd metaplot
+    $ pip install -e .
 
-To get the latest changes you can now run ``git pull`` on the following folder. Bugfixes may take a considerably longer time to appear on PyPI.
+Thanks to the ``-e`` flag, any changes made in the ``metaplot`` folder has immediate effect. To change version of ``metaplot``, simply check out the version you need, e.g., ``git pull`` to get the most recent one.
